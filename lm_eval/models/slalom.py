@@ -59,6 +59,7 @@ def get_config(litmodule: LightningModule):
 
     return config
 
+
 @register_model("slalom")
 class SlalomHFLM(LM):
     """Base class for models from the HuggingFace transformers library."""
@@ -526,5 +527,5 @@ class SlalomHFLM(LM):
         return re_ord.get_original(res)
 
 
-# for backwards compatibility
-GPT2LM = HFLM
+# # for backwards compatibility
+# GPT2LM = HFLM

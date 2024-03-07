@@ -20,11 +20,11 @@ import lm_eval.api.metrics
 import lm_eval.models
 import lm_eval.tasks
 
-# from lm_eval.evaluator import evaluate # TODO: use this method instead
-from lm_eval.utils import positional_deprecated, run_task_tests
+from lm_eval.evaluator import evaluate
 
+from lm_eval.utils import positional_deprecated
+from lm_eval.evaluator_utils import run_task_tests
 from lm_eval.models.slalom import SlalomHFLM
-
 from lm_eval.utils import eval_logger
 
 LOGGER = eval_logger
@@ -249,7 +249,7 @@ def wandb_table_from_markdown_table_str(data: str) -> wandb.Table:
     return _table
 
 
-def evaluate(cfg: dict, litmodule: LightningModule, logger: LightningLogger) -> dict:
+def slalom_evaluate(cfg: dict, litmodule: LightningModule, logger: LightningLogger) -> dict:
     """Run evaluation on the specified tasks.
 
     Args:
