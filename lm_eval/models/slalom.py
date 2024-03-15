@@ -16,6 +16,7 @@ from tqdm import tqdm
 from transformers import GPT2Config
 
 from lm_eval.utils import eval_logger
+from lm_eval.task_input_stats import TaskInputStats
 
 LOGGER = eval_logger
 
@@ -58,7 +59,6 @@ def get_config(litmodule: LightningModule):
         raise NotImplementedError("The configuration for the model being evaluated is not recognized.")
 
     return config
-
 
 @register_model("slalom")
 class SlalomHFLM(LM):
@@ -113,6 +113,9 @@ class SlalomHFLM(LM):
         self.batch_schedule = 1
         self.batch_sizes = {}
         self.max_batch_size = max_batch_size
+
+
+        self.task_input_stats = TaskInputStats()
 
         if str(batch_size).startswith("auto"):
             batch_size = batch_size.split(":")
@@ -198,7 +201,7 @@ class SlalomHFLM(LM):
 
             new_reqs.append(((context, continuation), context_enc, continuation_enc))
 
-        return self._loglikelihood_tokens(new_reqs, inp_padding_len=self.config.n_positions)
+        return self._loglikelihood_tokens(new_reqs)
 
     def loglikelihood_rolling(self, requests: list[Instance]) -> list[float]:
         loglikelihoods = []
@@ -240,7 +243,6 @@ class SlalomHFLM(LM):
                 rolling_token_windows,
                 disable_tqdm=True,
                 override_bs=adaptive_batch_size,
-                inp_padding_len=self.config.n_positions,
             )
 
             if (self.world_size > 1) and (pad_amnt > 0):
@@ -415,7 +417,6 @@ class SlalomHFLM(LM):
         requests: list[tuple[tuple[str, str], list[int], list[int]]],
         disable_tqdm: bool = False,
         override_bs: int = None,
-        inp_padding_len: int = None
     ) -> list[tuple[float, bool]]:
         # TODO: implement some kind of efficient-request-middleware that lumps together requests with the same context
         res = []
@@ -454,11 +455,13 @@ class SlalomHFLM(LM):
             conts = []
             encoder_attns = []
 
-            padding_len_inp = inp_padding_len
+            padding_len_inp = None
             padding_len_cont = None
             # because vectorizing is annoying, we first convert each (context, continuation) pair to padded
             # tensors, then we pack them together into a batch, call the model, and then pick it all apart
             # again because vectorizing is annoying
+
+            _stats = []
             for _, context_enc, continuation_enc in chunk:
                 # sanity check
                 assert len(context_enc) > 0
@@ -481,14 +484,30 @@ class SlalomHFLM(LM):
 
                 padding_len_inp = max(padding_len_inp, inplen) if padding_len_inp is not None else inplen
 
+                _stats.append({
+                    "context_enc": len(context_enc),
+                    "continuation_enc": len(continuation_enc),
+                    "inp_padding_len": padding_len_inp,
+                    "inplen": inplen
+                })
+
                 inps.append(inp)  # [1, inp_length]
                 cont_toks_list.append(continuation_enc)
                 inplens.append(inplen)
+
+            self.task_input_stats.log(_stats)
 
             # create encoder attn mask and batched conts, if seq2seq
             call_kwargs = {}
 
             batched_inps = pad_and_concat(padding_len_inp, inps, padding_side="right")  # [batch, padding_len_inp]
+
+            self.task_input_stats.log(
+                {
+                    "batched_inps_0": batched_inps.shape[0],
+                    "batched_inps_1": batched_inps.shape[1]
+                }
+            )
 
             multi_logits = F.log_softmax(
                 self._model_call(batched_inps, **call_kwargs), dim=-1
@@ -526,6 +545,3 @@ class SlalomHFLM(LM):
 
         return re_ord.get_original(res)
 
-
-# # for backwards compatibility
-# GPT2LM = HFLM

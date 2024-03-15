@@ -139,7 +139,7 @@ def make_summary(results: dict) -> str:
 
     for task_name in results:
         result = results[task_name]["results"]
-        if task_name == "mmlu":
+        if task_name == "mmlu" and "mmlu" in result:
             # Only include the MMLU result, since this is very verbose otherwise
             result = {"mmlu": result["mmlu"]}
         summary.append(json.dumps(result, indent=2))
@@ -170,7 +170,7 @@ def make_wandb_table(results, column: str = "results"):
     full_name = []
 
     for k, dic in result_dict[column].items():
-        version = result_dict["versions"][k]
+        version = result_dict["versions"].get(k, "N/A")
         n = str(result_dict["n-shot"][k])
 
         if "alias" in dic:
