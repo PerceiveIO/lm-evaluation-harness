@@ -7,6 +7,7 @@ from . import (
     neuron_optimum,
     openai_completions,
     optimum_lm,
+    slalom,
     textsynth,
     vllm_causallms,
 )
