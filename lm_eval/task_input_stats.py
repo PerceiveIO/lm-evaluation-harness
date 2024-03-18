@@ -1,6 +1,8 @@
 import io
 import numpy as np
 
+from collections import Counter
+
 from lm_eval.utils import eval_logger
 
 LOGGER = eval_logger
@@ -15,12 +17,12 @@ class TaskInputStats:
         output = io.StringIO()
 
         for i in range (0, bins):
-            print('{:12.5f}  | {:{width}s} {}'.format(
+            print('{:12.0f}  | {:{width}s} {}'.format(
                 b[i],
                 '#'*int(width*h[i]/np.amax(h)),
                 h[i],
                 width=width), file=output)
-        print('{:12.5f}  |'.format(b[bins]), file=output)
+        print('{:12.0f}  |'.format(b[bins]), file=output)
 
         contents = output.getvalue()
         output.close()
@@ -72,8 +74,8 @@ class TaskInputStats:
                         padded_prompts += 1
 
         LOGGER.info("----------------------------------------------------------------")
-        LOGGER.info(f"Requests (context) counts by token size. Length(tokens) | count\n{self.data_as_histogram(context_enc_)}")
-        LOGGER.info(f"Responses (continuation) counts by token size. Length(tokens) | count\n{self.data_as_histogram(continuation_enc_)}")
+        LOGGER.info(f"Requests (context) counts by token size. Length(tokens) | count\n{self.data_as_histogram(context_enc_, bins=min(30, 1 + len(Counter(context_enc_).keys())))}")
+        LOGGER.info(f"Responses (continuation) counts by token size. Length(tokens) | count\n{self.data_as_histogram(continuation_enc_, bins=min(30, 1 + len(Counter(continuation_enc_).keys())))}")
         LOGGER.info("----------------------------------------------------------------")
         LOGGER.info(f"Total prompts: {total_prompts}")
         LOGGER.info(f"Padded prompts: {padded_prompts}")
