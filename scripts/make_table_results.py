@@ -23,7 +23,7 @@ def make_table(result_dict):
     values = []
 
     for k, dic in sorted(result_dict["results"].items()):
-        version = result_dict["versions"][k]
+        version = result_dict["versions"].get(k, "N/A")
         percent = k == "squad2"
         for m, v in dic.items():
             if m.endswith("_stderr"):

@@ -28,6 +28,9 @@ if TYPE_CHECKING:
     from lm_eval.api.model import LM
     from lm_eval.tasks import Task
 
+from lm_eval.utils import eval_logger
+
+LOGGER = eval_logger
 
 @positional_deprecated
 def simple_evaluate(
@@ -366,6 +369,17 @@ def evaluate(
 
         # run requests through model
         resps = getattr(lm, reqtype)(cloned_reqs)
+
+        # ---------------------------------------------------------
+        # MODIFIED CODE
+        try:
+            lm.task_input_stats.generate_report()
+            lm.task_input_stats.reset()
+        except Exception as err:
+            LOGGER.error(f"Failed to generate task_input_stats report. Error: {err}")
+        # END OF MODIFIED CODE
+        # ---------------------------------------------------------
+
 
         # put responses from model into a list of length K for each request.
         for x, req in zip(resps, cloned_reqs):
