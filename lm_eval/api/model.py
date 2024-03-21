@@ -65,11 +65,11 @@ class LM(abc.ABC):
           multiple chunks, the last input will still a full-sized context.
           Example:
             Input tokens: [ 0 1 2 3 4 5 6 7 8 9 ]
-            Prefix: EOT
+            Prefix: BOS/EOS
             Max context length: 4
             Resulting input/prediction pairs:
 
-                INPUT:  EOT   0   1   2
+                INPUT:  BOS   0   1   2
                 PRED:     0   1   2   3
 
                 INPUT:    3   4   5   6
@@ -89,7 +89,8 @@ class LM(abc.ABC):
         :return: list[tuple[float]]
             A list of tuples (logprob,)
             logprob: float
-                The log probability of `context` conditioned on the EOT token.
+                The log probability of `context` conditioned on the BOS/EOS token.
+                Can also be overridden for custom cases by `prefix_token_id`.
         """
         pass
 
@@ -282,6 +283,11 @@ class TemplateLM(LM):
     def eot_token_id(self):
         pass
 
+    @property
+    def prefix_token_id(self):
+        # it is used as prefix for loglikelihood
+        return self.eot_token_id
+
     @abc.abstractmethod
     def tok_encode(self, string: str, **kwargs):
         pass
@@ -304,13 +310,15 @@ class TemplateLM(LM):
 
         return context_enc, continuation_enc
 
-    def loglikelihood(self, requests) -> List[Tuple[float, bool]]:
+    def loglikelihood(
+        self, requests, disable_tqdm: bool = False
+    ) -> List[Tuple[float, bool]]:
         new_reqs = []
         for context, continuation in [req.args for req in requests]:
             if context == "":
-                # end of text as context
+                # BOS or EOS as context
                 context_enc, continuation_enc = (
-                    [self.eot_token_id],
+                    [self.prefix_token_id],
                     self.tok_encode(continuation),
                 )
             else:
@@ -318,12 +326,14 @@ class TemplateLM(LM):
 
             new_reqs.append(((context, continuation), context_enc, continuation_enc))
 
-        return self._loglikelihood_tokens(new_reqs)
+        return self._loglikelihood_tokens(new_reqs, disable_tqdm=disable_tqdm)
 
     @abc.abstractmethod
-    def loglikelihood_rolling(self, requests) -> List[Tuple[float, bool]]:
+    def loglikelihood_rolling(
+        self, requests, disable_tqdm: bool = False
+    ) -> List[Tuple[float, bool]]:
         pass
 
     @abc.abstractmethod
-    def generate_until(self, requests) -> List[str]:
+    def generate_until(self, requests, disable_tqdm: bool = False) -> List[str]:
         pass
