@@ -8,6 +8,7 @@ import torch.nn.functional as F
 import transformers
 from lightning import LightningModule
 from lm_eval import utils
+from lm_eval.models.utils import Grouper, chunks
 from lm_eval.api.instance import Instance
 from lm_eval.api.model import LM
 from lm_eval.api.registry import register_model
@@ -299,7 +300,7 @@ class SlalomHFLM(LM):
         # we group requests by their generation_kwargs,
         # so that we don't try to execute e.g. greedy sampling and temp=0.8 sampling
         # in the same batch.
-        grouper = utils.Grouper(requests, lambda x: str(x.args[1]))
+        grouper = Grouper(requests, lambda x: str(x.args[1]))
         for key, reqs in grouper.get_grouped().items():
             # within each set of reqs for given kwargs, we reorder by token length, descending.
             re_ords[key] = utils.Reorderer([req.args for req in reqs], _collate)
@@ -313,7 +314,7 @@ class SlalomHFLM(LM):
             adaptive_batch_size = batch_size
         # for each different set of kwargs, we execute all requests, by batch.
         for key, re_ord in re_ords.items():
-            chunks = utils.chunks(
+            _chunks = chunks(
                 re_ord.get_reordered(),
                 n=(
                     self.batch_size
@@ -324,7 +325,7 @@ class SlalomHFLM(LM):
                 ),
                 fn=self._batch_scheduler if self.batch_size == "auto" and not adaptive_batch_size else None,
             )
-            for chunk in chunks:
+            for chunk in _chunks:
                 contexts, all_gen_kwargs = zip(*chunk)
                 # we assume all gen kwargs in the batch are the same
                 # this is safe to assume because the `grouper` object ensures it.
@@ -444,10 +445,10 @@ class SlalomHFLM(LM):
             else None
         )
 
-        chunks = re_ord.get_batched(n=batch_size, batch_fn=batch_fn)
+        _chunks = re_ord.get_batched(n=batch_size, batch_fn=batch_fn)
 
         pbar = tqdm(total=len(requests), disable=(disable_tqdm or (self.rank != 0)))
-        for chunk in chunks:
+        for chunk in _chunks:
             inps = []
             cont_toks_list = []
             inplens = []

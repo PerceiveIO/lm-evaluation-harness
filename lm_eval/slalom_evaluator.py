@@ -27,6 +27,9 @@ from lm_eval.evaluator_utils import run_task_tests
 from lm_eval.models.slalom import SlalomHFLM
 from lm_eval.utils import eval_logger
 
+import numpy as np
+import tinyBenchmarks as tb
+
 LOGGER = eval_logger
 
 
@@ -249,6 +252,49 @@ def wandb_table_from_markdown_table_str(data: str) -> wandb.Table:
     return _table
 
 
+def predict_tiny_benchmark(results: dict):
+    task_mapping = {
+        "tiny_arc": {
+            "benchmark": "arc",
+            "data_path": "tiny_arc"
+        },
+        "tiny_gsm8k": {
+            "benchmark": "gsm8k",
+            "data_path": "tiny_gsm8k"
+        },
+        "tiny_hellaswag": {
+            "benchmark": "hellaswag",
+            "data_path": "tiny_hellaswag"
+        },
+        "tiny_mmlu": {
+            "benchmark": "mmlu",
+            "data_path": "tinyMMLU"
+        },
+        "tiny_truthfulqa": {
+            "benchmark": "truthfulqa",
+            "data_path": "tiny_truthfulqa"
+        }
+    }
+
+    for task, data in results.items():
+        if not task in task_mapping:
+            continue
+
+        benchmark = task_mapping[task]["benchmark"]
+
+        _y = data["samples"][task_mapping[task]["data_path"]]
+        y = np.array([i["acc"] for i in _y])
+
+        eval = tb.evaluate(y, benchmark)
+        IRT, IRTp, IRTpp = eval[benchmark]['irt'], eval[benchmark]['pirt'], eval[benchmark]['gpirt']
+
+        LOGGER.info("--------------------------------------------------------------")
+        LOGGER.info(f"Predicted accuracy for: \"{task}\"")
+        LOGGER.info(f"Predicted accuracy based on anchor points (IRT): {IRT:10.3f}")
+        LOGGER.info(f"Predicted accuracy based on p-IRT:               {IRTp:10.3f}")
+        LOGGER.info(f"Predicted accuracy based on gp-IRT (IRT++):      {IRTpp:10.3f}")
+        LOGGER.info("--------------------------------------------------------------")
+
 def slalom_evaluate(cfg: dict, litmodule: LightningModule, logger: LightningLogger) -> dict:
     """Run evaluation on the specified tasks.
 
@@ -262,6 +308,9 @@ def slalom_evaluate(cfg: dict, litmodule: LightningModule, logger: LightningLogg
 
     tasks = cfg.tasks.split(",")
     few_shots = str(cfg.num_fewshot).split(",")
+
+    if cfg.log_samples is False and any(s.startwith("tiny_") for s in tasks):
+        assert RuntimeError("Set log_samples to True for TinyBenchmark evaluation.")
 
     results = {}
     for task, num_shot in zip(tasks, few_shots, strict=True):
@@ -294,6 +343,8 @@ def slalom_evaluate(cfg: dict, litmodule: LightningModule, logger: LightningLogg
             logger.experiment.log(
                 {f"Evaluation Results for {task}": make_wandb_table(results[task]), **metrics}
             )
+
+    predict_tiny_benchmark(results)
 
     summary = make_summary(results)
     LOGGER.info(summary)
