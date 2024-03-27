@@ -252,7 +252,7 @@ def wandb_table_from_markdown_table_str(data: str) -> wandb.Table:
     return _table
 
 
-def predict_tiny_benchmark(results: dict):
+def predict_tiny_benchmark(results: dict, logger: LightningLogger):
     task_mapping = {
         "tiny_arc": {
             "benchmark": "arc",
@@ -270,9 +270,9 @@ def predict_tiny_benchmark(results: dict):
             "benchmark": "mmlu",
             "data_path": "tinyMMLU"
         },
-        "tiny_truthfulqa": {
+        "tiny_truthfulqa_mc1": {
             "benchmark": "truthfulqa",
-            "data_path": "tiny_truthfulqa"
+            "data_path": "tiny_truthfulqa_mc1"
         }
     }
 
@@ -294,6 +294,15 @@ def predict_tiny_benchmark(results: dict):
         LOGGER.info(f"Predicted accuracy based on p-IRT:               {IRTp:10.3f}")
         LOGGER.info(f"Predicted accuracy based on gp-IRT (IRT++):      {IRTpp:10.3f}")
         LOGGER.info("--------------------------------------------------------------")
+
+        if isinstance(logger, WandbLogger):
+            logger.experiment.log(
+                {
+                    f"{task}_predicted_accuracy_IRT": IRT,
+                    f"{task}_predicted_accuracy_p-IRT": IRTp,
+                    f"{task}_predicted_accuracy_gp-IRT": IRTpp,
+                }
+            )
 
 def slalom_evaluate(cfg: dict, litmodule: LightningModule, logger: LightningLogger) -> dict:
     """Run evaluation on the specified tasks.
@@ -344,7 +353,7 @@ def slalom_evaluate(cfg: dict, litmodule: LightningModule, logger: LightningLogg
                 {f"Evaluation Results for {task}": make_wandb_table(results[task]), **metrics}
             )
 
-    predict_tiny_benchmark(results)
+    predict_tiny_benchmark(results, logger)
 
     summary = make_summary(results)
     LOGGER.info(summary)
