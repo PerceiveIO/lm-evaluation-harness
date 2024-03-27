@@ -287,7 +287,14 @@ def predict_tiny_benchmark(results: dict, logger: LightningLogger):
         benchmark = task_mapping[task]["benchmark"]
 
         _y = data["samples"][task_mapping[task]["data_path"]]
-        y = np.array([i["acc"] for i in _y])
+
+        try:
+            y = np.array([i["acc"] for i in _y])
+        except Exception as error:
+            # TODO: remove these after debugging
+             LOGGER.info("!!!!!!!!!!!!!!!!!!!")
+             LOGGER.info(f"Error: {error}")
+             LOGGER.info(_y)
 
         eval = tb.evaluate(y, benchmark)
         IRT, IRTp, IRTpp = eval[benchmark]['irt'], eval[benchmark]['pirt'], eval[benchmark]['gpirt']
