@@ -273,6 +273,10 @@ def predict_tiny_benchmark(results: dict, logger: LightningLogger):
         "tiny_truthfulqa_mc1": {
             "benchmark": "truthfulqa",
             "data_path": "tiny_truthfulqa_mc1"
+        },
+        "tiny_truthfulqa_mc2": {
+            "benchmark": "truthfulqa",
+            "data_path": "tiny_truthfulqa_mc2"
         }
     }
 
