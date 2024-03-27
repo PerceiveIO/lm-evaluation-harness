@@ -258,10 +258,10 @@ def predict_tiny_benchmark(results: dict, logger: LightningLogger):
             "benchmark": "arc",
             "data_path": "tiny_arc_challenge"
         },
-        "tiny_gsm8k": {
-            "benchmark": "gsm8k",
-            "data_path": "tiny_gsm8k"
-        },
+        # "tiny_gsm8k": {
+        #     "benchmark": "gsm8k",
+        #     "data_path": "tiny_gsm8k"
+        # },
         "tiny_hellaswag": {
             "benchmark": "hellaswag",
             "data_path": "tiny_hellaswag"
