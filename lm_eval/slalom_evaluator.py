@@ -251,61 +251,6 @@ def wandb_table_from_markdown_table_str(data: str) -> wandb.Table:
     _table = wandb.Table(columns=columns, data=rows)
     return _table
 
-
-def predict_tiny_benchmark(results: dict, logger: LightningLogger):
-    task_mapping = {
-        "tiny_arc_challenge": {
-            "benchmark": "arc",
-            "data_path": "tiny_arc_challenge"
-        },
-        # "tiny_gsm8k": {
-        #     "benchmark": "gsm8k",
-        #     "data_path": "tiny_gsm8k"
-        # },
-        "tiny_hellaswag": {
-            "benchmark": "hellaswag",
-            "data_path": "tiny_hellaswag"
-        },
-        "tiny_mmlu": {
-            "benchmark": "mmlu",
-            "data_path": "tinyMMLU"
-        },
-        "tiny_truthfulqa_mc1": {
-            "benchmark": "truthfulqa",
-            "data_path": "tiny_truthfulqa_mc1"
-        },
-        "tiny_truthfulqa_mc2": {
-            "benchmark": "truthfulqa",
-            "data_path": "tiny_truthfulqa_mc2"
-        }
-    }
-
-    for task, data in results.items():
-        if task in task_mapping:
-            benchmark = task_mapping[task]["benchmark"]
-
-            _y = data["samples"][task_mapping[task]["data_path"]]
-            y = np.array([i["acc"] for i in _y])
-
-            eval = tb.evaluate(y, benchmark)
-            IRT, IRTp, IRTpp = eval[benchmark]['irt'], eval[benchmark]['pirt'], eval[benchmark]['gpirt']
-
-            LOGGER.info("--------------------------------------------------------------")
-            LOGGER.info(f"Predicted accuracy for: \"{task}\"")
-            LOGGER.info(f"Predicted accuracy based on anchor points (IRT): {IRT:10.3f}")
-            LOGGER.info(f"Predicted accuracy based on p-IRT:               {IRTp:10.3f}")
-            LOGGER.info(f"Predicted accuracy based on gp-IRT (IRT++):      {IRTpp:10.3f}")
-            LOGGER.info("--------------------------------------------------------------")
-
-            if isinstance(logger, WandbLogger):
-                logger.experiment.log(
-                    {
-                        f"{task}_predicted_accuracy_IRT": IRT,
-                        f"{task}_predicted_accuracy_p-IRT": IRTp,
-                        f"{task}_predicted_accuracy_gp-IRT": IRTpp,
-                    }
-                )
-
 def slalom_evaluate(cfg: dict, litmodule: LightningModule, logger: LightningLogger) -> dict:
     """Run evaluation on the specified tasks.
 
@@ -354,8 +299,6 @@ def slalom_evaluate(cfg: dict, litmodule: LightningModule, logger: LightningLogg
             logger.experiment.log(
                 {f"Evaluation Results for {task}": make_wandb_table(results[task]), **metrics}
             )
-
-    predict_tiny_benchmark(results, logger)
 
     summary = make_summary(results)
     LOGGER.info(summary)

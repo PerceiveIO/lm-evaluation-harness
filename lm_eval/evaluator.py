@@ -5,7 +5,10 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, List, Optional, Union
 
 import numpy as np
+import tinyBenchmarks as tb
 import torch
+
+import wandb
 
 import lm_eval.api.metrics
 import lm_eval.api.registry
@@ -270,6 +273,57 @@ def simple_evaluate(
     else:
         return None
 
+def predict_tiny_benchmark(results: dict):
+    task_mapping = {
+        "tiny_arc_challenge": {
+            "benchmark": "arc",
+            "data_path": "tiny_arc_challenge"
+        },
+        # "tiny_gsm8k": {
+        #     "benchmark": "gsm8k",
+        #     "data_path": "tiny_gsm8k"
+        # },
+        "tiny_hellaswag": {
+            "benchmark": "hellaswag",
+        },
+        "tiny_mmlu": {
+            "benchmark": "mmlu",
+        },
+        "tinyMMLU": {
+            "benchmark": "mmlu",
+        },
+        "tiny_truthfulqa_mc1": {
+            "benchmark": "truthfulqa",
+        },
+        "tiny_truthfulqa_mc2": {
+            "benchmark": "truthfulqa",
+        }
+    }
+
+    for task, data in results.items():
+        if task in task_mapping:
+            benchmark = task_mapping[task]["benchmark"]
+
+            y = np.array([i["acc"] for i in data])
+
+            eval = tb.evaluate(y, benchmark)
+            IRT, IRTp, IRTpp = eval[benchmark]['irt'], eval[benchmark]['pirt'], eval[benchmark]['gpirt']
+
+            LOGGER.info("--------------------------------------------------------------")
+            LOGGER.info(f"Predicted accuracy for: \"{task}\"")
+            LOGGER.info(f"Predicted accuracy based on anchor points (IRT): {IRT:10.3f}")
+            LOGGER.info(f"Predicted accuracy based on p-IRT:               {IRTp:10.3f}")
+            LOGGER.info(f"Predicted accuracy based on gp-IRT (IRT++):      {IRTpp:10.3f}")
+            LOGGER.info("--------------------------------------------------------------")
+
+            if wandb.run is not None:
+                wandb.log(
+                    {
+                        f"{task}_predicted_accuracy_IRT": IRT,
+                        f"{task}_predicted_accuracy_p-IRT": IRTp,
+                        f"{task}_predicted_accuracy_gp-IRT": IRTpp,
+                    }
+                )
 
 @positional_deprecated
 def evaluate(
@@ -560,6 +614,8 @@ def evaluate(
         }
         if log_samples:
             results_dict["samples"] = dict(samples)
+
+        predict_tiny_benchmark(samples)
 
         return results_dict
 
