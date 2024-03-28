@@ -320,7 +320,7 @@ def slalom_evaluate(cfg: dict, litmodule: LightningModule, logger: LightningLogg
     tasks = cfg.tasks.split(",")
     few_shots = str(cfg.num_fewshot).split(",")
 
-    if cfg.log_samples is False and any(s.startwith("tiny_") for s in tasks):
+    if cfg.log_samples is False and any(s.startswith("tiny_") for s in tasks):
         assert RuntimeError("Set log_samples to True for TinyBenchmark evaluation.")
 
     results = {}
