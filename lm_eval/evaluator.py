@@ -338,14 +338,14 @@ def predict_tiny_benchmark(results: dict):
             LOGGER.info(f"Predicted accuracy based on gp-IRT (IRT++):      {IRTpp:10.3f}")
             LOGGER.info("--------------------------------------------------------------")
 
+            columns = ["Metric", "Value"]
+            table = wandb.Table(columns=columns)
+            table.add_data( "Predicted accuracy based on anchor points (IRT)",IRT)
+            table.add_data( "Predicted accuracy based on p-IRT",IRTp)
+            table.add_data( "Predicted accuracy based on gp-IRT (IRT++)", IRTpp)
+
             if wandb.run is not None:
-                wandb.log(
-                    {
-                        f"{task}_predicted_accuracy_IRT": IRT,
-                        f"{task}_predicted_accuracy_p-IRT": IRTp,
-                        f"{task}_predicted_accuracy_gp-IRT": IRTpp,
-                    }
-                )
+                wandb.log({f"tinyBenchmark for {task}": table})
 
 @positional_deprecated
 def evaluate(
