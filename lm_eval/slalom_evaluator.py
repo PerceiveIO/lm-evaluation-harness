@@ -26,9 +26,6 @@ from lm_eval.evaluator_utils import run_task_tests
 from lm_eval.models.slalom import SlalomHFLM
 from lm_eval.utils import eval_logger
 
-import numpy as np
-import tinyBenchmarks as tb
-
 LOGGER = eval_logger
 
 
