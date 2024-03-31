@@ -10,7 +10,6 @@ import wandb
 from copy import deepcopy
 from lightning import LightningModule
 from lightning.pytorch.loggers import Logger as LightningLogger
-from lightning.pytorch.loggers.wandb import WandbLogger
 from lm_eval import utils
 from lm_eval.tasks import TaskManager
 
@@ -251,7 +250,7 @@ def wandb_table_from_markdown_table_str(data: str) -> wandb.Table:
     _table = wandb.Table(columns=columns, data=rows)
     return _table
 
-def slalom_evaluate(cfg: dict, litmodule: LightningModule, logger: LightningLogger) -> dict:
+def slalom_evaluate(cfg: dict, litmodule: LightningModule) -> dict:
     """Run evaluation on the specified tasks.
 
     Args:
@@ -295,8 +294,8 @@ def slalom_evaluate(cfg: dict, litmodule: LightningModule, logger: LightningLogg
                 metric_key = f"{task}.{k.replace(',none', '')}"
                 metrics[metric_key] = v
 
-        if isinstance(logger, WandbLogger):
-            logger.experiment.log(
+        if wandb.run is not None:
+            wandb.log(
                 {f"Evaluation Results for {task}": make_wandb_table(results[task]), **metrics}
             )
 
