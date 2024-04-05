@@ -202,7 +202,7 @@ class SlalomHFLM(LM):
 
             new_reqs.append(((context, continuation), context_enc, continuation_enc))
 
-        return self._loglikelihood_tokens(new_reqs)
+        return self._loglikelihood_tokens(new_reqs, disable_tqdm=True)
 
     def loglikelihood_rolling(self, requests: list[Instance]) -> list[float]:
         loglikelihoods = []
@@ -447,6 +447,8 @@ class SlalomHFLM(LM):
 
         _chunks = re_ord.get_batched(n=batch_size, batch_fn=batch_fn)
 
+        chunk_idx = 0
+        print_freq = int(len(requests) / 20) # print every 5%
         pbar = tqdm(total=len(requests), disable=(disable_tqdm or (self.rank != 0)))
         for chunk in _chunks:
             inps = []
@@ -542,6 +544,10 @@ class SlalomHFLM(LM):
                 self.cache_hook.add_partial("loglikelihood", cache_key, answer)
                 pbar.update(1)
 
+                if disable_tqdm:
+                    chunk_idx += 1
+                    if chunk_idx % print_freq == 0:
+                        LOGGER.info(f"Processed {chunk_idx} out of {int(len(requests))} chunks ({int((chunk_idx + 1) * 100 / len(requests))}%)...")
         pbar.close()
 
         return re_ord.get_original(res)
