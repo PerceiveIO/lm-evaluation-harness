@@ -547,7 +547,7 @@ class SlalomHFLM(LM):
                 if disable_tqdm:
                     chunk_idx += 1
                     if chunk_idx % print_freq == 0:
-                        LOGGER.info(f"Processed {chunk_idx} out of {int(len(requests))} chunks ({int((chunk_idx + 1) * 100 / len(requests))}%)...")
+                        LOGGER.info("Processed %d out of %d chunks (%.2f%%)...", chunk_idx, len(requests), (chunk_idx + 1) * 100 / len(requests))
         pbar.close()
 
         return re_ord.get_original(res)
