@@ -6,6 +6,7 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, List, Optional, Union
 
 import numpy as np
+import tinyBenchmarks as tb
 import torch
 
 import wandb
@@ -34,7 +35,6 @@ if TYPE_CHECKING:
 from lm_eval.utils import eval_logger
 
 LOGGER = eval_logger
-
 
 @positional_deprecated
 def simple_evaluate(
@@ -295,6 +295,57 @@ def simple_evaluate(
     else:
         return None
 
+def predict_tiny_benchmark(results: dict):
+    task_mapping = {
+        "tiny_arc_challenge": {
+            "benchmark": "arc",
+            "data_path": "tiny_arc_challenge"
+        },
+        # "tiny_gsm8k": {
+        #     "benchmark": "gsm8k",
+        #     "data_path": "tiny_gsm8k"
+        # },
+        "tiny_hellaswag": {
+            "benchmark": "hellaswag",
+        },
+        "tiny_mmlu": {
+            "benchmark": "mmlu",
+        },
+        "tinyMMLU": {
+            "benchmark": "mmlu",
+        },
+        "tiny_truthfulqa_mc1": {
+            "benchmark": "truthfulqa",
+        },
+        "tiny_truthfulqa_mc2": {
+            "benchmark": "truthfulqa",
+        }
+    }
+
+    for task, data in results.items():
+        if task in task_mapping:
+            benchmark = task_mapping[task]["benchmark"]
+
+            y = np.array([i["acc"] for i in data])
+
+            eval = tb.evaluate(y, benchmark)
+            IRT, IRTp, IRTpp = eval[benchmark]['irt'], eval[benchmark]['pirt'], eval[benchmark]['gpirt']
+
+            LOGGER.info("--------------------------------------------------------------")
+            LOGGER.info(f"Predicted accuracy for: \"{task}\"")
+            LOGGER.info(f"Predicted accuracy based on anchor points (IRT): {IRT:10.3f}")
+            LOGGER.info(f"Predicted accuracy based on p-IRT:               {IRTp:10.3f}")
+            LOGGER.info(f"Predicted accuracy based on gp-IRT (IRT++):      {IRTpp:10.3f}")
+            LOGGER.info("--------------------------------------------------------------")
+
+            columns = ["Metric", "Value"]
+            table = wandb.Table(columns=columns)
+            table.add_data( "Predicted accuracy based on anchor points (IRT)",IRT)
+            table.add_data( "Predicted accuracy based on p-IRT",IRTp)
+            table.add_data( "Predicted accuracy based on gp-IRT (IRT++)", IRTpp)
+
+            if wandb.run is not None:
+                wandb.log({f"tinyBenchmark for {task}": table})
 
 @positional_deprecated
 def evaluate(
@@ -404,6 +455,7 @@ def evaluate(
             LOGGER.error(f"Failed to generate task_input_stats report. Error: {err}")
         # END OF MODIFIED CODE
         # ---------------------------------------------------------
+
 
         # put responses from model into a list of length K for each request.
         for x, req in zip(resps, cloned_reqs):
@@ -535,16 +587,16 @@ def evaluate(
                     ]
 
                     # compute group's pooled metric and stderr
-                    results[group][metric] = (
-                        lm_eval.api.metrics.aggregate_subtask_metrics(metrics, sizes)
-                    )
+                    results[group][
+                        metric
+                    ] = lm_eval.api.metrics.aggregate_subtask_metrics(metrics, sizes)
                     # TODO: calculate grouped metric using aggregation fn
                     if "N/A" in stderrs:
                         results[group][stderr] = "N/A"
                     else:
-                        results[group][stderr] = (
-                            lm_eval.api.metrics.pooled_sample_stderr(stderrs, sizes)
-                        )
+                        results[group][
+                            stderr
+                        ] = lm_eval.api.metrics.pooled_sample_stderr(stderrs, sizes)
                         # TODO: allow GroupConfigs to choose which variance formula is used, for back-compatibility
                         # To use the old (likely incorrect) variance formula, comment out the above and uncomment this line:
                         # results[group][stderr] = lm_eval.api.metrics.combined_sample_stderr(stderrs, sizes, metrics=metrics)
@@ -584,6 +636,8 @@ def evaluate(
         }
         if log_samples:
             results_dict["samples"] = dict(samples)
+
+        predict_tiny_benchmark(samples)
 
         return results_dict
 

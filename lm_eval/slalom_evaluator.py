@@ -45,25 +45,16 @@ def get_task_names(tasks_arg: str) -> list[str]:
 
     task_path = Path(tasks_arg)
     if task_path.is_dir():
-        return [
-            utils.load_yaml_config(str(yaml_file))
-            for yaml_file in task_path.glob("*.yaml")
-        ]
+        return [utils.load_yaml_config(str(yaml_file)) for yaml_file in task_path.glob("*.yaml")]
 
     tasks_list = tasks_arg.split(",")
     task_names = task_manager.match_tasks(tasks_list)
-    task_names += [
-        utils.load_yaml_config(task) for task in tasks_list if Path(task).is_file()
-    ]
-    task_missing = [
-        task for task in tasks_list if task not in task_names and "*" not in task
-    ]
+    task_names += [utils.load_yaml_config(task) for task in tasks_list if Path(task).is_file()]
+    task_missing = [task for task in tasks_list if task not in task_names and "*" not in task]
 
     if task_missing:
         missing = ", ".join(task_missing)
-        raise ValueError(
-            f"Tasks {missing} were not found. Try `lm-eval --tasks list` for list of available tasks."
-        )
+        raise ValueError(f"Tasks {missing} were not found. Try `lm-eval --tasks list` for list of available tasks.")
 
     return task_names
 
@@ -123,14 +114,8 @@ def run_evaluation(
     )
 
     # filter out verbose "configs", "versions", etc. for MMLU task
-    result_to_log = {
-        k: v for k, v in results.items() if k in ("results", "groups", "config")
-    }
-    LOGGER.info(
-        'Raw result for "%s":\n%s',
-        ",".join(task_names),
-        json.dumps(result_to_log, indent=2),
-    )
+    result_to_log = {k: v for k, v in results.items() if k in ("results", "groups", "config")}
+    LOGGER.info('Raw result for "%s":\n%s', ",".join(task_names), json.dumps(result_to_log, indent=2))
 
     return results
 
@@ -262,7 +247,6 @@ def wandb_table_from_markdown_table_str(data: str) -> wandb.Table:
     _table = wandb.Table(columns=columns, data=rows)
     return _table
 
-
 def slalom_evaluate(cfg: dict, litmodule: LightningModule) -> dict:
     """Run evaluation on the specified tasks.
 
@@ -276,6 +260,9 @@ def slalom_evaluate(cfg: dict, litmodule: LightningModule) -> dict:
 
     tasks = cfg.tasks.split(",")
     few_shots = str(cfg.num_fewshot).split(",")
+
+    if cfg.log_samples is False and any(s.startswith("tiny_") for s in tasks):
+        assert RuntimeError("Set log_samples to True for TinyBenchmark evaluation.")
 
     results = {}
     for task, num_shot in zip(tasks, few_shots, strict=True):
@@ -306,17 +293,13 @@ def slalom_evaluate(cfg: dict, litmodule: LightningModule) -> dict:
 
         if wandb.run is not None:
             wandb.log(
-                {
-                    f"Evaluation Results for {task}": make_wandb_table(results[task]),
-                    **metrics,
-                }
+                {f"Evaluation Results for {task}": make_wandb_table(results[task]), **metrics}
             )
 
     summary = make_summary(results)
     LOGGER.info(summary)
 
     return results
-
 
 @positional_deprecated
 def simple_evaluate(
@@ -389,25 +372,15 @@ def simple_evaluate(
     if check_integrity:
         run_task_tests(task_list=tasks)
 
-    results = evaluate(
-        lm=lm,
-        task_dict=task_dict,
-        limit=limit,
-        write_out=write_out,
-        log_samples=log_samples,
-    )
+    results = evaluate(lm=lm, task_dict=task_dict, limit=limit, write_out=write_out, log_samples=log_samples)
 
     # add info about the model and few shot config
     results["config"] = {
-        "model": model_args
-        if isinstance(model_args, str)
-        else model_args.model.config._name_or_path,
+        "model": model_args if isinstance(model_args, str) else model_args.model.config._name_or_path,
         "model_args": model_args,
         "num_fewshot": num_fewshot,
         "batch_size": batch_size,
-        "batch_sizes": list(lm.batch_sizes.values())
-        if hasattr(lm, "batch_sizes")
-        else [],
+        "batch_sizes": list(lm.batch_sizes.values()) if hasattr(lm, "batch_sizes") else [],
         "limit": limit,
     }
 
