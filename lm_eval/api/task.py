@@ -410,9 +410,13 @@ class Task(abc.ABC):
 
         num_docs = len(doc_id_docs)
 
+        doc_idx = 0
+        print_freq = int(num_docs / 20) # print every 5%
+
         for doc_id, doc in tqdm(
             doc_id_docs,
             total=num_docs,
+            disable=True
         ):
             # sample fewshot context #TODO: need to offset doc_id by rank now!
             fewshot_ctx = self.fewshot_context(
@@ -431,6 +435,10 @@ class Task(abc.ABC):
                 inst = [inst]
 
             instances.append(inst)
+
+            doc_idx += 1
+            if doc_idx % print_freq == 0:
+                eval_logger.info(f"Processed {doc_idx} out of {num_docs} docs ({int((doc_idx + 1) * 100 / num_docs)}%)...")
 
         # now flatten, this is to allow slicing to work with pickles
 
