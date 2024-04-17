@@ -412,6 +412,8 @@ class Task(abc.ABC):
 
         doc_idx = 0
         print_freq = int(num_docs / 20) # print every 5%
+        if print_freq == 0:
+            print_freq = 1
 
         for doc_id, doc in tqdm(
             doc_id_docs,
