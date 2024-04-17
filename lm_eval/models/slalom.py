@@ -449,6 +449,8 @@ class SlalomHFLM(LM):
 
         chunk_idx = 0
         print_freq = int(len(requests) / 20) # print every 5%
+        if print_freq == 0:
+            print_freq = 1
         pbar = tqdm(total=len(requests), disable=(disable_tqdm or (self.rank != 0)))
         for chunk in _chunks:
             inps = []
