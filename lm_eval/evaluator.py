@@ -6,7 +6,7 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, List, Optional, Union
 
 import numpy as np
-import tinyBenchmarks as tb
+# import tinyBenchmarks as tb
 import torch
 
 import wandb
@@ -347,6 +347,7 @@ def predict_tiny_benchmark(results: dict):
             if wandb.run is not None:
                 wandb.log({f"tinyBenchmark for {task}": table})
 
+
 @positional_deprecated
 def evaluate(
     lm: "LM",
@@ -376,6 +377,8 @@ def evaluate(
     :return
         Dictionary of results
     """
+
+
 
     eval_logger.setLevel(getattr(logging, f"{verbosity}"))
 
@@ -492,6 +495,13 @@ def evaluate(
                 metrics = task.process_results(
                     doc, [req.filtered_resps[filter_key] for req in requests]
                 )
+                if metrics['exact_match'] != 0.0:
+                    LOGGER.info("doc: \n")
+                    LOGGER.info("Model output: \n")
+                    LOGGER.info(instances_by_doc_id[doc_id][0].resps[0] + '\n')
+                    LOGGER.info(str(doc) + '\n')
+                    LOGGER.info(str([req.filtered_resps[filter_key] for req in requests]) + '\n')
+                    LOGGER.info("exact_match = " + str(metrics["exact_match"]) + "\n")
                 if log_samples:
                     target = task.doc_to_target(doc)
                     example = {
